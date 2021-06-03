@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+
+set -e # fail fast
+
+
+indent() {
+  sed -u 's/^/       /'
+}
+
+
+BUILD_DIR=$1
+CACHE_DIR=$2
+HOME_FOLDER_REPLACEMENT="__CACHE_HOME__"
+
+
+echo "=====> Caching files for future builds"
+
+for FILENAME in $(cat ${BUILD_DIR}/.buildcache | sed '/^$/d'); do
+  echo -n "${FILENAME}" | indent
+
+  if [[ ${FILENAME} = \~/* ]]; then
+    WITHOUT_TILDE=$(echo ${FILENAME} | sed 's/~\///')
+    SRC=~/${WITHOUT_TILDE}
+    DEST=${CACHE_DIR}/buildcache/${HOME_FOLDER_REPLACEMENT}/${WITHOUT_TILDE}
+  else
+    SRC=${BUILD_DIR}/${FILENAME}
+    DEST=${CACHE_DIR}/buildcache/${FILENAME}
+  fi
+
+  # skip non-existing files
+  if ! [ -e ${SRC} ]; then
+    echo " ✗ - not found"
+    continue
+  fi
+
+  # create parent directory structure
+  mkdir -p $(dirname ${DEST})
+
+  # delete old files
+  if [ -e ${DEST} ]; then
+    rm -r ${DEST}
+  fi
+
+  # copy files to cache
+  cp -r ${SRC} ${DEST}
+
+  echo " ✓"
+done
